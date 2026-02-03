@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fast Match Finder</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --card-bg: #16213e;
+      --accent: #e94560;
+      --text: #eaeaea;
+      --muted: #a0a0a0;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --scale: 1.33;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: calc(1.5rem * var(--scale));
+    }
+    h1 {
+      font-size: calc(1.75rem * var(--scale));
+      font-weight: 700;
+      margin: 0 0 calc(0.5rem * var(--scale));
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: calc(0.95rem * var(--scale));
+      margin-bottom: calc(1.5rem * var(--scale));
+    }
+    .controls {
+      display: flex;
+      gap: calc(0.75rem * var(--scale));
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: calc(1.5rem * var(--scale));
+    }
+    button {
+      font-family: inherit;
+      font-size: calc(0.95rem * var(--scale));
+      padding: calc(0.6rem * var(--scale)) calc(1.2rem * var(--scale));
+      border: none;
+      border-radius: calc(8px * var(--scale));
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.secondary {
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    button.ai-plays-on {
+      background: #2d8a4e;
+      color: white;
+      border-color: #2d8a4e;
+    }
+    button.ai-plays-on:hover { filter: brightness(1.1); }
+    button.btn-next {
+      box-shadow: 0 0 12px var(--accent), 0 0 20px rgba(233,69,96,0.4);
+    }
+    button.btn-next.secondary {
+      box-shadow: 0 0 12px rgba(255,255,255,0.5), 0 0 20px rgba(255,255,255,0.25);
+    }
+    @keyframes ai-nudge-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-1.5px); }
+      75% { transform: translateX(1.5px); }
+    }
+    button#btnAI.ai-nudge {
+      animation: ai-nudge-shake 0.45s ease-in-out;
+    }
+    .ai-btn-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .ai-btn-wrap button:disabled {
+      pointer-events: none;
+    }
+    .ai-btn-wrap:has(button:disabled) {
+      cursor: not-allowed;
+    }
+    .ai-disabled-tooltip {
+      position: absolute;
+      left: 50%;
+      bottom: 100%;
+      transform: translateX(-50%) translateY(-6px);
+      padding: 6px 10px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      font-size: calc(0.8rem * var(--scale));
+      color: var(--muted);
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .timer {
+      font-variant-numeric: tabular-nums;
+      font-size: calc(1.5rem * var(--scale));
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: calc(0.5rem * var(--scale));
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(calc(254.1px * var(--scale)), 1fr));
+      gap: calc(1.5rem * var(--scale));
+      max-width: calc(900px * var(--scale));
+      margin-bottom: calc(1.5rem * var(--scale));
+    }
+    .card-box {
+      background: transparent;
+      border-radius: 50%;
+      padding: calc(0.75rem * var(--scale));
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card-box h3 {
+      margin: 0 0 calc(0.5rem * var(--scale));
+      font-size: calc(0.85rem * var(--scale));
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .card-box.ai-card-disabled h3,
+    .card-box.ai-card-not-playing h3 {
+      color: var(--muted);
+    }
+    .card-box.ai-card-disabled .card-back,
+    .card-box.ai-card-not-playing .card-back {
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+    .card-box.ai-card-disabled .card-back .game-logo,
+    .card-box.ai-card-not-playing .card-back .game-logo {
+      fill: var(--muted);
+      stroke: var(--muted);
+    }
+    .card-box.ai-card-disabled .card-canvas,
+    .card-box.ai-card-not-playing .card-canvas {
+      background: var(--muted);
+    }
+    .card-wrapper {
+      width: 100%;
+      max-width: calc(254.1px * var(--scale));
+      aspect-ratio: 1;
+      perspective: 600px;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s ease;
+      transform-style: preserve-3d;
+    }
+    .card-wrapper.revealed .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-back,
+    .card-front {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+    .card-back {
+      background: #1e5f74;
+      border: calc(4px * var(--scale)) solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: rotateY(0deg);
+      color: #fff;
+    }
+    .card-back .game-logo {
+      width: 67.5%;
+      height: 67.5%;
+      fill: #fff;
+      stroke: #fff;
+    }
+    .card-front {
+      transform: rotateY(180deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-canvas {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      aspect-ratio: 1;
+      background: #fff;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .card-canvas .sym {
+      position: absolute;
+      transform-origin: center;
+      white-space: nowrap;
+      font-size: calc(1.86rem * var(--scale));
+      line-height: 1;
+      color: #333;
+      text-shadow: 0 0 2px rgba(255,255,255,0.8);
+      pointer-events: none;
+    }
+    .card-canvas.target-card .sym {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    .card-canvas.target-card .sym:hover {
+      filter: brightness(0.85);
+    }
+    .card-box.target-card-box.target-active .card-wrapper {
+      box-shadow: 0 0 12px #fff, 0 0 20px rgba(255,255,255,0.5);
+      border-radius: 50%;
+    }
+    .card-box .target-hint {
+      display: none;
+      margin: calc(0.5rem * var(--scale)) 0 0;
+      font-size: calc(0.9rem * var(--scale));
+      color: #fff;
+      font-weight: 600;
+      text-shadow: 0 0 8px rgba(255,255,255,0.8);
+    }
+    .card-box.target-card-box.target-active .target-hint {
+      display: block;
+    }
+    .card-canvas .sym.large { font-size: calc(2.79rem * var(--scale)); font-weight: 600; }
+    .card-canvas .sym.medium { font-size: calc(2.17rem * var(--scale)); }
+    .card-canvas .sym.small { font-size: calc(1.55rem * var(--scale)); }
+    .result {
+      margin-top: calc(1rem * var(--scale));
+      padding: calc(0.75rem * var(--scale)) calc(1rem * var(--scale));
+      border-radius: calc(8px * var(--scale));
+      cursor: pointer;
+      user-select: none;
+      font-size: calc(1rem * var(--scale));
+      font-weight: 500;
+    }
+    .result.correct { background: rgba(0,200,100,0.2); color: #7febc2; }
+    .result.wrong { background: rgba(233,69,96,0.2); color: #ff8a9e; }
+    .result .expected { font-size: calc(0.9rem * var(--scale)); opacity: 0.9; }
+    .ai-result {
+      margin-top: calc(0.75rem * var(--scale));
+      padding: calc(0.6rem * var(--scale)) calc(1rem * var(--scale));
+      border-radius: calc(8px * var(--scale));
+      background: rgba(100,100,180,0.2);
+      font-size: calc(0.95rem * var(--scale));
+      cursor: pointer;
+      user-select: none;
+    }
+    .ai-debug {
+      margin-top: calc(0.5rem * var(--scale));
+      padding: calc(0.5rem * var(--scale));
+      border-radius: calc(6px * var(--scale));
+      background: rgba(0,0,0,0.25);
+      font-size: calc(0.8rem * var(--scale));
+      font-family: ui-monospace, monospace;
+      max-height: 40vh;
+      overflow: auto;
+    }
+    .ai-debug summary { cursor: pointer; color: var(--muted); }
+    .ai-debug pre { margin: 0.5rem 0 0; white-space: pre-wrap; word-break: break-all; }
+    .ai-debug h4 { margin: 0.75rem 0 0.25rem; font-size: 0.85em; color: var(--muted); }
+    .ai-debug h4:first-child { margin-top: 0; }
+    .loading { opacity: 0.7; pointer-events: none; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <h1>Fast Match Finder</h1>
+  <p class="sub">Find the one symbol that appears on both <strong>your card</strong> and the <strong>target card</strong>. Fastest correct answer wins.</p>
+
+  <div class="timer" id="timer">0.00</div>
+  <div class="controls">
+    <button id="btnNew">New round</button>
+    <button id="btnStart" class="secondary" disabled>Start timer</button>
+    <span class="ai-btn-wrap"><button id="btnAI" type="button" class="secondary" disabled>AI plays</button></span>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div id="humanResult" class="result" style="display:none;"></div>
+  <div id="humanDebug" class="ai-debug" style="display:none;"></div>
+  <div id="aiResult" class="ai-result" style="display:none;"></div>
+  <div id="aiDebug" class="ai-debug" style="display:none;"></div>
+
+  <script>
+    const API = '';
+    let roundId = null;
+    let layout = null;
+    let allSymbolNames = [];
+    let timerStart = null;
+    let timerInterval = null;
+    let aiPlaysEnabled = false;
+    let humanWonThisRound = false;
+    let answerSubmittedThisRound = false;
+    let roundWinner = null; // 'ai' | 'human' | null – first correct answer wins
+    let nudgeIntervalId = null;
+    let lastAiDebug = null; // debug payload from last AI play (show on dblclick)
+    let lastHumanDebug = null; // Cypher debug for human validation (show on dblclick humanResult)
+    let aiAvailable = false;
+
+    function get(url, opts = {}) {
+      return fetch(API + url, { ...opts, headers: { 'Content-Type': 'application/json', ...opts.headers } });
+    }
+    function post(url, body = {}) {
+      return fetch(API + url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+
+    function clampPct(v, minPct, maxPct) {
+      if (v == null || isNaN(v)) return 50;
+      return Math.max(minPct, Math.min(maxPct, Number(v)));
+    }
+    // Card-back logo: 5 nodes – hub (top-mid-right), 3 spokes left/down, chain to far-right (shifted down-left to feel centered)
+    var gameLogoSvg = '<svg class="game-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-label="Fast Match Finder">' +
+      '<g fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">' +
+      '<circle cx="52" cy="44" r="6"/>' +
+      '<circle cx="22" cy="34" r="6"/>' +
+      '<circle cx="22" cy="58" r="6"/>' +
+      '<circle cx="52" cy="68" r="6"/>' +
+      '<circle cx="76" cy="61" r="6"/>' +
+      '<line x1="52" y1="44" x2="22" y2="34"/>' +
+      '<line x1="52" y1="44" x2="22" y2="58"/>' +
+      '<line x1="52" y1="44" x2="52" y2="68"/>' +
+      '<line x1="52" y1="68" x2="76" y2="61"/>' +
+      '</g></svg>';
+
+    function renderCard(container, cardLayout, title, isTargetCard, isAiCard, cardId) {
+      const box = document.createElement('div');
+      box.className = 'card-box' + (isTargetCard ? ' target-card-box' : '');
+      if (cardId != null) box.dataset.cardId = cardId;
+      box.innerHTML =
+        '<h3>' + title + '</h3>' +
+        '<div class="card-wrapper">' +
+          '<div class="card-inner">' +
+            '<div class="card-back">' + gameLogoSvg + '</div>' +
+            '<div class="card-front"><div class="card-canvas" id="canvas-' + title.replace(/\s/g,'') + '"></div></div>' +
+          '</div>' +
+        '</div>' +
+        (isTargetCard ? '<p class="target-hint">Click the match!</p>' : '');
+      const wrapper = box.querySelector('.card-wrapper');
+      if (isAiCard) {
+        wrapper.classList.add('ai-card');
+        if (!aiAvailable) {
+          box.classList.add('ai-card-disabled');
+          box.title = 'no OpenAI key in .env';
+        }
+      }
+      const canvas = box.querySelector('.card-canvas');
+      if (isTargetCard) canvas.classList.add('target-card');
+      cardLayout.forEach(s => {
+        const el = document.createElement('span');
+        el.className = 'sym ' + (s.size || 'medium');
+        el.textContent = s.emoji != null ? s.emoji : (s.name.length > 14 ? s.name.slice(0, 12) + '…' : s.name);
+        var x = clampPct(s.x, 18, 82);
+        var y = clampPct(s.y, 18, 82);
+        el.style.left = x + '%';
+        el.style.top = y + '%';
+        el.style.transform = 'translate(-50%,-50%) rotate(' + (s.rotation || 0) + 'deg)';
+        el.title = s.name;
+        el.dataset.name = s.name;
+        if (isTargetCard) {
+          el.addEventListener('click', function () { submitAnswerWithName(this.dataset.name); });
+        }
+        canvas.appendChild(el);
+      });
+      container.appendChild(box);
+    }
+
+    function setNextButton(which) {
+      document.getElementById('btnNew').classList.toggle('btn-next', which === 'new');
+      document.getElementById('btnStart').classList.toggle('btn-next', which === 'start');
+    }
+    function setRevealedCardIdTitles() {
+      document.querySelectorAll('.card-wrapper.revealed').forEach(function (w) {
+        var box = w.closest('.card-box');
+        var id = box && box.dataset.cardId;
+        if (id != null) {
+          var title = 'Card ID: ' + id;
+          var h3 = box.querySelector('h3');
+          if (h3) h3.title = title;
+          w.title = title;
+        }
+      });
+    }
+
+    function stopNudgeInterval() {
+      if (nudgeIntervalId) clearInterval(nudgeIntervalId);
+      nudgeIntervalId = null;
+    }
+    function startNudgeInterval() {
+      stopNudgeInterval();
+      if (!roundId || aiPlaysEnabled) return;
+      var btn = document.getElementById('btnAI');
+      if (!btn || btn.disabled) return;
+      nudgeIntervalId = setInterval(function () {
+        btn = document.getElementById('btnAI');
+        if (!btn || btn.disabled || aiPlaysEnabled || timerInterval) return;
+        btn.classList.remove('ai-nudge');
+        btn.offsetHeight;
+        btn.classList.add('ai-nudge');
+        setTimeout(function () { btn.classList.remove('ai-nudge'); }, 450);
+      }, 4000);
+    }
+
+    function startTimer() {
+      if (timerStart) return;
+      timerStart = Date.now();
+      setNextButton(null);
+      document.querySelectorAll('.card-wrapper:not(.ai-card)').forEach(function (w) { w.classList.add('revealed'); });
+      if (aiPlaysEnabled) {
+        document.querySelectorAll('.card-wrapper.ai-card').forEach(function (w) { w.classList.add('revealed'); });
+      } else {
+        var aiCardBox = document.querySelector('.card-wrapper.ai-card');
+        if (aiCardBox) aiCardBox.closest('.card-box').classList.add('ai-card-not-playing');
+      }
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('btnAI').disabled = true;
+      stopNudgeInterval();
+      var targetBox = document.querySelector('.card-box.target-card-box');
+      if (targetBox) targetBox.classList.add('target-active');
+      timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - timerStart) / 1000;
+        document.getElementById('timer').textContent = elapsed.toFixed(2);
+      }, 50);
+      if (aiPlaysEnabled && roundId) {
+        runAIPlay();
+      }
+    }
+
+    // GPT-4o mini pricing: $0.15/1M input, $0.60/1M output (only shown when token_cost_applicable)
+    function formatTokenUsage(usage, tokenCostApplicable) {
+      if (!usage) return ' Tokens: not reported';
+      var p = usage.prompt_tokens, c = usage.completion_tokens, t = usage.total_tokens;
+      if (t == null) return ' Tokens: not reported';
+      var parts = [];
+      if (p != null) parts.push(p + ' prompt');
+      if (c != null) parts.push(c + ' completion');
+      var tokStr = ' Tokens: ' + t + ' total' + (parts.length ? ' (' + parts.join(', ') + ')' : '');
+      if (tokenCostApplicable) {
+        var cost = (p || 0) * 0.15 / 1e6 + (c || 0) * 0.60 / 1e6;
+        if (cost > 0) tokStr += ' ~ $' + cost.toFixed(4);
+      }
+      return tokStr;
+    }
+
+    function renderAiDebug(debug) {
+      var wrap = document.getElementById('aiDebug');
+      if (!debug) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.style.display = 'block';
+      var html = '';
+      if (debug.request) {
+        html += '<h4>Request</h4><details open><summary>' + (debug.request.method || '') + ' ' + (debug.request.url || '') + '</summary><pre>' + escapeHtml(JSON.stringify(debug.request.body, null, 2)) + '</pre></details>';
+      }
+      if (debug.response) {
+        html += '<h4>Response</h4><details open><summary>HTTP ' + (debug.response.status_code || '') + '</summary><pre>' + escapeHtml(JSON.stringify(debug.response.body, null, 2)) + '</pre></details>';
+      }
+      if (debug.error) {
+        html += '<h4>Error</h4><pre>' + escapeHtml(debug.error) + '</pre>';
+      }
+      wrap.innerHTML = html;
+    }
+    function escapeHtml(s) {
+      var div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+    function renderHumanDebug(debug) {
+      var wrap = document.getElementById('humanDebug');
+      if (!debug || !debug.cypher) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.style.display = 'block';
+      var c = debug.cypher;
+      var html = '<h4>Cypher (shared symbol: human card ↔ target card)</h4><pre>' + escapeHtml(c.query || '') + '</pre>';
+      if (c.params) html += '<h4>Parameters</h4><pre>' + escapeHtml(JSON.stringify(c.params, null, 2)) + '</pre>';
+      if (debug.output) {
+        var out = debug.output;
+        var ordered = { name: out.name, pointId: out.pointId };
+        html += '<h4>Output</h4><pre>' + escapeHtml(JSON.stringify(ordered, null, 2)) + '</pre>';
+      }
+      wrap.innerHTML = html;
+    }
+    function getEmojiForName(n) {
+      if (!layout || !n) return '';
+      var cards = [layout.target, layout.human, layout.ai];
+      for (var c = 0; c < cards.length; c++)
+        for (var i = 0; i < (cards[c] || []).length; i++)
+          if (cards[c][i].name === n) return cards[c][i].emoji || '';
+      return '';
+    }
+
+    async function runAIPlay() {
+      const el = document.getElementById('aiResult');
+      const debugEl = document.getElementById('aiDebug');
+      el.style.display = 'block';
+      debugEl.style.display = 'none';
+      debugEl.innerHTML = '';
+      el.textContent = 'AI thinking…';
+      lastAiDebug = null;
+      el.title = '';
+      const startTime = Date.now();
+      try {
+        const res = await post('/api/round/' + roundId + '/ai-play');
+        const result = await res.json();
+        lastAiDebug = result.debug || null;
+        el.title = lastAiDebug ? 'Double-click to show request/response debug' : '';
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+        const tok = formatTokenUsage(result.usage, result.token_cost_applicable);
+        if (result.error) {
+          el.textContent = 'AI lost! ' + result.error + tok;
+        } else if (result.correct) {
+          if (roundWinner === 'human') {
+            el.textContent = 'AI got it correct too. ' + elapsed + 's.' + tok;
+          } else {
+            roundWinner = 'ai';
+            var guess = (result.name && result.name.trim()) ? (' Guessed: ' + result.name + (result.emoji ? ' ' + result.emoji : '') + '.') : '';
+            el.textContent = 'AI won! 🎉' + guess + ' ' + elapsed + 's.' + tok;
+          }
+        } else {
+          var guessPart = (result.name && result.name.trim()) ? ('Said ' + result.name + (result.emoji ? ' ' + result.emoji : '') + '. ') : 'No valid answer. ';
+          var expPart = (result.expected && result.expected.name) ? (result.expected.name + (result.expected_emoji ? ' ' + result.expected_emoji : '') + '. ') : '';
+          el.textContent = 'AI lost! ' + guessPart + 'Expected: ' + expPart + ' ' + elapsed + 's.' + tok;
+        }
+      } catch (e) {
+        const tok = formatTokenUsage(null);
+        el.textContent = 'AI lost! Request failed.' + formatTokenUsage(null);
+        lastAiDebug = null;
+      }
+    }
+
+    function toggleAIPlays() {
+      if (document.getElementById('btnAI').disabled) return;
+      aiPlaysEnabled = !aiPlaysEnabled;
+      const btn = document.getElementById('btnAI');
+      if (aiPlaysEnabled) {
+        btn.classList.add('ai-plays-on');
+        stopNudgeInterval();
+      } else {
+        btn.classList.remove('ai-plays-on');
+        if (!timerInterval) startNudgeInterval();
+      }
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    async function newRound() {
+      humanWonThisRound = false;
+      answerSubmittedThisRound = false;
+      roundWinner = null;
+      document.getElementById('humanResult').style.display = 'none';
+      document.getElementById('humanDebug').style.display = 'none';
+      document.getElementById('humanDebug').innerHTML = '';
+      document.getElementById('aiResult').style.display = 'none';
+      document.getElementById('aiDebug').style.display = 'none';
+      document.getElementById('aiDebug').innerHTML = '';
+      lastAiDebug = null;
+      lastHumanDebug = null;
+      document.getElementById('timer').textContent = '0.00';
+      timerStart = null;
+      stopTimer();
+      document.getElementById('btnStart').disabled = false;
+      var btnAI = document.getElementById('btnAI');
+      btnAI.disabled = !aiAvailable;
+      btnAI.title = aiAvailable ? '' : 'no OpenAI key in .env';
+
+      const res = await post('/api/round');
+      const r = await res.json();
+      roundId = r.roundId;
+      layout = r.layout;
+      allSymbolNames = r.allSymbolNames || [];
+
+      stopTimer();
+      timerStart = null;
+      document.getElementById('timer').textContent = '0.00';
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnAI').disabled = !aiAvailable;
+      var targetBox = document.querySelector('.card-box.target-card-box');
+      if (targetBox) targetBox.classList.remove('target-active');
+
+      const cardsEl = document.getElementById('cards');
+      cardsEl.innerHTML = '';
+      renderCard(cardsEl, layout.human, 'Your card', false, false, r.humanCardId);
+      renderCard(cardsEl, layout.target, 'Target card', true, false, r.targetCardId);
+      renderCard(cardsEl, layout.ai, "AI's card", false, true, r.aiCardId);
+      setNextButton('start');
+      if (!aiPlaysEnabled) {
+        var btn = document.getElementById('btnAI');
+        if (btn && !btn.disabled) {
+          btn.classList.remove('ai-nudge');
+          btn.offsetHeight;
+          btn.classList.add('ai-nudge');
+          setTimeout(function () { btn.classList.remove('ai-nudge'); }, 450);
+        }
+        startNudgeInterval();
+      }
+    }
+
+    async function submitAnswerWithName(name) {
+      if (!roundId || !name) return;
+      if (answerSubmittedThisRound) return;
+      answerSubmittedThisRound = true;
+      stopTimer();
+      document.getElementById('btnAI').disabled = true;
+      var targetBox = document.querySelector('.card-box.target-card-box');
+      if (targetBox) targetBox.classList.remove('target-active');
+      const res = await post('/api/round/' + roundId + '/validate', { name });
+      const result = await res.json();
+      lastHumanDebug = result.debug || null;
+      const el = document.getElementById('humanResult');
+      el.style.display = 'block';
+      el.title = lastHumanDebug ? 'Double-click to show Cypher debug' : '';
+      el.className = 'result ' + (result.correct ? 'correct' : 'wrong');
+      if (result.correct) {
+        humanWonThisRound = true;
+        if (roundWinner === 'ai') {
+          el.textContent = 'Correct, but AI won this round.';
+        } else {
+          roundWinner = 'human';
+          var emoji = getEmojiForName(name);
+          el.textContent = 'You guessed ' + name + (emoji ? ' ' + emoji : '') + ' and won! 🎉';
+        }
+        setNextButton('new');
+      } else {
+        el.textContent = 'You lost!';
+        if (result.expected) {
+          var expEmoji = getEmojiForName(result.expected.name);
+          el.innerHTML += ' <span class="expected">Expected: ' + result.expected.name + (expEmoji ? ' ' + expEmoji : '') + '</span>';
+        }
+        setNextButton('new');
+      }
+      if (!aiPlaysEnabled) startNudgeInterval();
+      setRevealedCardIdTitles();
+    }
+
+    document.getElementById('btnNew').onclick = newRound;
+    document.getElementById('btnStart').onclick = startTimer;
+    document.getElementById('btnAI').onclick = toggleAIPlays;
+
+    (function initAiClickTooltip() {
+      var btnAI = document.getElementById('btnAI');
+      var wrap = btnAI && btnAI.closest('.ai-btn-wrap');
+      if (!wrap) return;
+      wrap.addEventListener('click', function (e) {
+        if (!btnAI.disabled || aiAvailable) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var tip = document.createElement('div');
+        tip.className = 'ai-disabled-tooltip';
+        tip.textContent = 'no OpenAI key in .env';
+        wrap.appendChild(tip);
+        function remove() {
+          if (tip.parentNode) tip.parentNode.removeChild(tip);
+          document.removeEventListener('click', remove);
+        }
+        setTimeout(remove, 2500);
+        setTimeout(function () { document.addEventListener('click', remove); }, 0);
+      });
+    })();
+
+    (function initAiAvailable() {
+      var btnAI = document.getElementById('btnAI');
+      function setAiButtonState(available) {
+        aiAvailable = !!available;
+        btnAI.disabled = !aiAvailable;
+        btnAI.title = aiAvailable ? '' : 'no OpenAI key in .env';
+      }
+      get('/api/health').then(function (r) { return r.json(); }).then(function (data) {
+        setAiButtonState(data.ai_available);
+      }).catch(function () {
+        setAiButtonState(false);
+      });
+    })();
+    document.getElementById('humanResult').ondblclick = function () {
+      var wrap = document.getElementById('humanDebug');
+      if (lastHumanDebug) {
+        renderHumanDebug(lastHumanDebug);
+        wrap.style.display = 'block';
+      } else {
+        wrap.innerHTML = '<p style="margin:0;color:var(--muted);">No Cypher debug for this round (Neo4j may be disconnected).</p>';
+        wrap.style.display = 'block';
+      }
+    };
+    document.getElementById('aiResult').ondblclick = function () {
+      var wrap = document.getElementById('aiDebug');
+      if (lastAiDebug) {
+        renderAiDebug(lastAiDebug);
+        wrap.style.display = 'block';
+      } else {
+        wrap.innerHTML = '<p style="margin:0;color:var(--muted);">No debug data for this round.</p>';
+        wrap.style.display = 'block';
+      }
+    };
+    setNextButton('new');
+  </script>
+</body>
+</html>

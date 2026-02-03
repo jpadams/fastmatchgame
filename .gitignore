@@ -1,0 +1,33 @@
+# Dependencies
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+out/
+dist/
+build/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Neo4j data (if running locally outside Docker)
+neo4j_data/
+neo4j_logs/
