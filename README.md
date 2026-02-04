@@ -29,10 +29,10 @@ uv sync
 # 3. Copy env template and edit
 cp .env.example .env
 # Edit .env: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD if using Neo4j;
-# set OPENAI_API_KEY (and optionally OPENAI_BASE_URL for Ollama etc.) if you want the AI player.
+# set OPENAI_API_KEY (and optionally OPENAI_BASE_URL if needed) if you want the AI player.
 ```
 
-**Neo4j (optional):** If you want graph-backed validation, run Neo4j (e.g. `docker run -p 7687:7687 -e NEO4J_AUTH=neo4j/your-password neo4j`) and set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`. The server seeds the deck on first run via `seed_neo4j.py`.
+**Neo4j (optional):** If you want graph-backed validation, run Neo4j (e.g. `docker run -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/your-password neo4j`) and set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`. The server seeds the deck on first run via `seed_neo4j.py`.
 
 ## Run
 
@@ -46,8 +46,7 @@ Open http://localhost:8000 and click **New round**.
 
 - **Round**: 3 distinct card IDs in 0..56 are chosen (target, AI, human). The API returns a layout for each card: symbols with random **position** (%), **rotation** (degrees), and **size** (large/medium/small).
 - **Frontend**: Renders the three cards with those layouts. You start the timer, find the symbol that appears on both **your card** and the **target card**, then submit (dropdown or type). The graph is queried to validate your answer.
-- **AI player**: Optional. Set `OPENAI_API_KEY` in `.env` (and optionally `OPENAI_BASE_URL` for Ollama or other OpenAI-compatible endpoints). When you click **AI plays**, the server generates PNG images of the AI card and target card (same symbols, server-side layout), sends them to a vision model (e.g. GPT-4o or Ollama), and gets a symbol name. The **judge** uses the graph to check correctness (same validation as for the human).
-- **Two-model design**: You can use one model as the game host (generating rounds and judging) and a separate model as the AI opponent by having the AI player call a different API or model.
+- **AI player**: Optional. Set `OPENAI_API_KEY` in `.env` (and optionally `OPENAI_BASE_URL` for other OpenAI-compatible endpoints). When you click **AI plays**, the server generates PNG images of the AI card and target card (same symbols, server-side layout), sends them to a vision model (gpt-4o mini by default), and gets a symbol name. The **judge** uses the graph to check correctness (same validation as for the human). You can point the AI at a different API or model via `OPENAI_BASE_URL` and `OPENAI_DEFAULT_MODEL`.
 
 ## API
 
