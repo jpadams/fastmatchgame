@@ -199,7 +199,7 @@ def validate_answer(round_id: str, body: dict[str, Any]) -> dict[str, Any]:
 async def ai_play(round_id: str) -> dict[str, Any]:
     """
     AI plays: we need images of AI card and target card.
-    If render is available, we generate them and call vision model; else return instructions.
+    Handicap delay is applied client-side before this is called; the timer keeps running.
     """
     if round_id not in _rounds:
         raise HTTPException(status_code=404, detail="Round not found")

@@ -306,6 +306,39 @@
     .card-box.target-card-box.target-active .target-hint {
       display: block;
     }
+    .card-box.ai-card-box {
+      position: relative;
+    }
+    .card-box.ai-card-box .ai-card-cell {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card-box.ai-card-box .ai-handicap {
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: calc(1.25rem * var(--scale));
+      display: flex;
+      flex-direction: column;
+      gap: calc(0.35rem * var(--scale));
+      font-size: calc(0.9rem * var(--scale));
+      color: var(--text);
+    }
+    .card-box.ai-card-box .ai-handicap label {
+      display: flex;
+      align-items: center;
+      gap: calc(0.4rem * var(--scale));
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .card-box.ai-card-box .ai-handicap input[type="radio"] {
+      margin: 0;
+      cursor: pointer;
+    }
     .card-canvas .sym.large { font-size: calc(2.79rem * var(--scale)); font-weight: 600; }
     .card-canvas .sym.medium { font-size: calc(2.17rem * var(--scale)); }
     .card-canvas .sym.small { font-size: calc(1.55rem * var(--scale)); }
@@ -383,6 +416,7 @@
     let lastAiDebug = null; // debug payload from last AI play (show on dblclick)
     let lastHumanDebug = null; // Cypher debug for human validation (show on dblclick humanResult)
     let aiAvailable = false;
+    let aiDelaySeconds = Math.min(3, Math.max(0, parseInt(localStorage.getItem('aiDelaySeconds'), 10) || 0));
 
     function get(url, opts = {}) {
       return fetch(API + url, { ...opts, headers: { 'Content-Type': 'application/json', ...opts.headers } });
@@ -411,9 +445,9 @@
 
     function renderCard(container, cardLayout, title, isTargetCard, isAiCard, cardId) {
       const box = document.createElement('div');
-      box.className = 'card-box' + (isTargetCard ? ' target-card-box' : '');
+      box.className = 'card-box' + (isTargetCard ? ' target-card-box' : '') + (isAiCard ? ' ai-card-box' : '');
       if (cardId != null) box.dataset.cardId = cardId;
-      box.innerHTML =
+      var cardPart =
         '<h3>' + title + '</h3>' +
         '<div class="card-wrapper">' +
           '<div class="card-inner">' +
@@ -422,8 +456,26 @@
           '</div>' +
         '</div>' +
         (isTargetCard ? '<p class="target-hint">Click the match!</p>' : '');
+      if (isAiCard) {
+        box.innerHTML =
+          '<div class="ai-card-cell">' + cardPart + '</div>' +
+          '<div class="ai-handicap" id="aiHandicap" style="display:' + (aiPlaysEnabled ? 'flex' : 'none') + ';">' +
+            '<label title="no delay"><input type="radio" name="aiDelay" value="0"' + (aiDelaySeconds === 0 ? ' checked' : '') + '> no delay</label>' +
+            '<label title="1 secs delay"><input type="radio" name="aiDelay" value="1"' + (aiDelaySeconds === 1 ? ' checked' : '') + '> 1</label>' +
+            '<label title="2 secs delay"><input type="radio" name="aiDelay" value="2"' + (aiDelaySeconds === 2 ? ' checked' : '') + '> 2</label>' +
+            '<label title="3 secs delay"><input type="radio" name="aiDelay" value="3"' + (aiDelaySeconds === 3 ? ' checked' : '') + '> 3</label>' +
+          '</div>';
+      } else {
+        box.innerHTML = cardPart;
+      }
       const wrapper = box.querySelector('.card-wrapper');
       if (isAiCard) {
+        box.querySelectorAll('.ai-handicap input[name="aiDelay"]').forEach(function (radio) {
+          radio.addEventListener('change', function () {
+            aiDelaySeconds = parseInt(this.value, 10);
+            try { localStorage.setItem('aiDelaySeconds', String(aiDelaySeconds)); } catch (e) {}
+          });
+        });
         wrapper.classList.add('ai-card');
         if (!aiAvailable) {
           box.classList.add('ai-card-disabled');
@@ -599,6 +651,11 @@
       el.title = '';
       const startTime = Date.now();
       try {
+        var delayInput = document.querySelector('input[name="aiDelay"]:checked');
+        var delaySec = delayInput ? parseInt(delayInput.value, 10) : 0;
+        if (delaySec > 0) {
+          await new Promise(function (r) { setTimeout(r, delaySec * 1000); });
+        }
         const res = await post('/api/round/' + roundId + '/ai-play');
         const result = await res.json();
         lastAiDebug = result.debug || null;
@@ -631,11 +688,14 @@
       if (document.getElementById('btnAI').disabled) return;
       aiPlaysEnabled = !aiPlaysEnabled;
       const btn = document.getElementById('btnAI');
+      const handicapEl = document.getElementById('aiHandicap');
       if (aiPlaysEnabled) {
         btn.classList.add('ai-plays-on');
+        if (handicapEl) handicapEl.style.display = 'flex';
         stopNudgeInterval();
       } else {
         btn.classList.remove('ai-plays-on');
+        if (handicapEl) handicapEl.style.display = 'none';
         if (!timerInterval) startNudgeInterval();
       }
     }
