@@ -152,7 +152,6 @@
       width: 100%;
       line-height: 0;
       text-align: center;
-      position: relative;
     }
     .welcome-demo-img-wrap img {
       display: block;
@@ -160,25 +159,6 @@
       height: auto;
       vertical-align: top;
       margin: 0 auto;
-    }
-    .welcome-demo-click-hint {
-      position: absolute;
-      left: 40%;
-      top: 20%;
-      transform: translate(-50%, -100%) rotate(45deg);
-      text-align: center;
-      pointer-events: none;
-      color: var(--text);
-    }
-    .welcome-demo-click-hint .finger-tap {
-      display: block;
-      font-size: calc(5.4rem * var(--scale));
-      line-height: 1;
-      animation: finger-tap 1.2s ease-in-out infinite;
-    }
-    @keyframes finger-tap {
-      0%, 100% { transform: translateX(0); }
-      50% { transform: translateX(0.35em); }
     }
     .welcome-demo-caption {
       grid-column: 1 / -1;
@@ -481,10 +461,7 @@
           '<div class="welcome-demo-headings">' +
             '<h3>Your card</h3><h3>Target card</h3><h3>AI\'s card</h3>' +
           '</div>' +
-          '<div class="welcome-demo-img-wrap">' +
-            '<img src="static/sample-match.svg" alt="Find the symbol on both cards" />' +
-            '<div class="welcome-demo-click-hint"><span class="finger-tap" aria-hidden="true">☞</span></div>' +
-          '</div>' +
+          '<div class="welcome-demo-img-wrap"><img src="static/sample-match.svg" alt="Find the symbol on both cards" /></div>' +
           '<p class="welcome-demo-caption"><strong>Click on <span class="caption-lozenge">New round</span> to play!</strong></p>' +
           '<p class="welcome-demo-caption"><strong>Toggle on <span class="caption-lozenge caption-lozenge-ai">AI plays 🤖</span> to battle!</strong></p>' +
         '</div>';
