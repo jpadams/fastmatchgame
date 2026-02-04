@@ -2,6 +2,14 @@
 
 A timed perception game using a **57-card deck** represented in Neo4j as a projective plane graph. Three cards are drawn at random (target, AI, human). Players race to find the **one symbol shared** between their card and the target card. The graph is the source of truth for validation.
 
+## Quickstart
+
+```bash
+uv run uvicorn main:app
+```
+
+Open http://localhost:8000
+
 ## Prerequisites
 
 - **[uv](https://docs.astral.sh/uv/)** (Python 3.12+)
