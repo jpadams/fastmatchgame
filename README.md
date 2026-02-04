@@ -10,6 +10,9 @@ uv run uvicorn main:app
 
 Open http://localhost:8000
 
+<img width="1239" height="937" alt="image" src="https://github.com/user-attachments/assets/bb68f144-75b4-4864-b003-aed15c44edf4" />
+
+
 ## Prerequisites
 
 - **[uv](https://docs.astral.sh/uv/)** (Python 3.12+)
