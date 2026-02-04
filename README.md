@@ -13,7 +13,7 @@ Open http://localhost:8000
 ## Prerequisites
 
 - **[uv](https://docs.astral.sh/uv/)** (Python 3.12+)
-- **Neo4j** (optional): Used for graph-backed validation and symbol lookup. If not running, the game uses built-in projective-plane math (order 7).
+- **Neo4j** (optional but great for learning): Used for graph-backed validation and symbol lookup. If not running, the game uses built-in projective-plane math (order 7).
 - **OpenAI API key** (optional): For the AI opponent (vision model). Without it, you can still play; the "AI plays" button is just disabled or skips the vision call.
 
 ## Setup (after cloning)
@@ -32,7 +32,22 @@ cp .env.example .env
 # set OPENAI_API_KEY (and optionally OPENAI_BASE_URL if needed) if you want the AI player.
 ```
 
-**Neo4j (optional):** If you want graph-backed validation, run Neo4j (e.g. `docker run -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/your-password neo4j`) and set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`. The server seeds the deck on first run via `seed_neo4j.py`.
+**Neo4j (optional):** If you want graph-backed validation, run Neo4j and provide credentials in the `.env` file.
+
+- An AuraDB Free Tier or Professional Tier instance works great: https://neo4j.com/product/auradb/
+
+- Neo4j Desktop
+
+- Local Docker
+```
+docker run
+  -p 7474:7474
+  -p 7687:7687
+  -e NEO4J_AUTH=neo4j/your-password
+  neo4j
+```
+
+and set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`. The server seeds the deck on first run via `seed_neo4j.py`.
 
 ## Run
 
