@@ -2,6 +2,8 @@
 
 A timed perception game using a **57-card deck** represented in Neo4j as a projective plane graph. Three cards are drawn at random (target, AI, human). Players race to find the **one symbol shared** between their card and the target card. The graph is the source of truth for validation.
 
+More in my companion blog post: https://medium.com/neo4j/the-math-and-the-graph-behind-a-popular-match-game-50f491ee487c
+
 ## Quickstart
 
 ```bash
