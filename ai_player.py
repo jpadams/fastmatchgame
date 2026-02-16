@@ -52,7 +52,7 @@ def ai_guess_shared_symbol(
     """
     Send both card images and the list of symbols on the AI's card; ask for the shared symbol.
     Model is prompted to reason step by step, then give one final answer. Single attempt.
-    Returns { "name": str | None, "pointId": int | None, "error": str | None }.
+    Returns { "name": str | None, "symbolId": int | None, "error": str | None }.
     name can be None when the model returns empty content, wrong format, or no matching symbol
     (e.g. content filter, max_tokens cut-off before "Final answer:", or a typo in the answer).
     """
@@ -74,9 +74,9 @@ def ai_guess_shared_symbol(
         if base_url != "https://api.openai.com/v1" and not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
     if not HTTPX_AVAILABLE:
-        return {"name": None, "pointId": None, "error": "AI not configured (httpx not installed; run: uv sync)"}
+        return {"name": None, "symbolId": None, "error": "AI not configured (httpx not installed; run: uv sync)"}
     if not api_key and (not use_ollama_native and base_url == "https://api.openai.com/v1"):
-        return {"name": None, "pointId": None, "error": "AI not configured (set OPENAI_API_KEY in .env)"}
+        return {"name": None, "symbolId": None, "error": "AI not configured (set OPENAI_API_KEY in .env)"}
 
     from symbols import EMOJI_NAMES
 
@@ -191,26 +191,26 @@ def ai_guess_shared_symbol(
             token_cost_applicable = not use_ollama_native and base_url == "https://api.openai.com/v1" and model == "gpt-4o-mini"
             usage = data.get("usage") if token_cost_applicable else None
             debug_response = {"status_code": r.status_code, "body": data}
-            return {"name": name, "pointId": None, "error": None, "usage": usage, "token_cost_applicable": token_cost_applicable, "debug": {"request": debug_request, "response": debug_response}}
+            return {"name": name, "symbolId": None, "error": None, "usage": usage, "token_cost_applicable": token_cost_applicable, "debug": {"request": debug_request, "response": debug_response}}
     except Exception as e:
         token_cost_applicable = not use_ollama_native and base_url == "https://api.openai.com/v1" and model == "gpt-4o-mini"
-        return {"name": None, "pointId": None, "error": str(e), "usage": None, "token_cost_applicable": token_cost_applicable, "debug": {"request": debug_request, "response": None, "error": str(e)}}
+        return {"name": None, "symbolId": None, "error": str(e), "usage": None, "token_cost_applicable": token_cost_applicable, "debug": {"request": debug_request, "response": None, "error": str(e)}}
 
 
 def judge_answer(
     claimed_name: str | None,
-    claimed_point_id: int | None,
+    claimed_symbol_id: int | None,
     round_obj: "Round",
     role: str,
 ) -> dict:
     """
     Judge a claimed answer (human or AI) using the graph as source of truth.
-    role in ("human", "ai"). Returns { "correct": bool, "expected": { "pointId", "name" } | None }.
+    role in ("human", "ai"). Returns { "correct": bool, "expected": { "symbolId", "name" } | None }.
     """
     if role == "human":
         truth = round_obj.human_target_shared()
-        valid = round_obj.validate_human_answer(claimed_point_id, claimed_name or "")
+        valid = round_obj.validate_human_answer(claimed_symbol_id, claimed_name or "")
     else:
         truth = round_obj.ai_target_shared()
-        valid = round_obj.validate_ai_answer(claimed_point_id, claimed_name or "")
+        valid = round_obj.validate_ai_answer(claimed_symbol_id, claimed_name or "")
     return {"correct": valid, "expected": truth}

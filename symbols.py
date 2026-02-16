@@ -1,10 +1,10 @@
 """
-57 emojis and their display names for game symbols (pointId 1..57).
+57 emojis and their display names for game symbols (symbolId 0..56).
 Names describe the actual emoji used.
 """
 from __future__ import annotations
 
-# One emoji per symbol (pointId 1..57; index 0..56)
+# One emoji per symbol (symbolId 0..56; index = symbolId)
 POINT_ID_TO_EMOJI: list[str] = [
     "⚓",   # 0  Anchor
     "🍎",   # 1  Apple
@@ -78,17 +78,17 @@ EMOJI_NAMES: list[str] = [
 ]
 
 
-def emoji_for_point_id(point_id: int) -> str:
-    """Return the emoji for a symbol pointId (1..57)."""
-    if 1 <= point_id <= 57:
-        return POINT_ID_TO_EMOJI[point_id - 1]
+def emoji_for_symbol_id(symbol_id: int) -> str:
+    """Return the emoji for a symbol (symbolId 0..56)."""
+    if 0 <= symbol_id <= 56:
+        return POINT_ID_TO_EMOJI[symbol_id]
     return "?"
 
 
-def name_for_point_id(point_id: int) -> str:
-    """Return the display name for a symbol pointId (1..57)."""
-    if 1 <= point_id <= 57:
-        return EMOJI_NAMES[point_id - 1]
+def name_for_symbol_id(symbol_id: int) -> str:
+    """Return the display name for a symbol (symbolId 0..56)."""
+    if 0 <= symbol_id <= 56:
+        return EMOJI_NAMES[symbol_id]
     return "?"
 
 

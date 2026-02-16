@@ -68,10 +68,10 @@ def close_driver() -> None:
 
 def get_symbols_on_card(card_id: int) -> list[dict]:
     """
-    Return list of { pointId, name } for all symbols on the card with cardId = card_id.
-    Name is always the emoji name from symbols (not the value stored in Neo4j).
+    Return list of { symbolId, name, emoji } for all symbols on the card with cardId = card_id.
+    Name is from symbols; emoji is from the Symbol node when present, else from symbols.
     """
-    from symbols import name_for_point_id
+    from symbols import name_for_symbol_id, emoji_for_symbol_id
 
     driver = get_driver()
     if not driver:
@@ -81,12 +81,19 @@ def get_symbols_on_card(card_id: int) -> list[dict]:
         result = session.run(
             """
             MATCH (s:Point:Symbol)-[:ON]->(c:Card {cardId: $card_id})
-            RETURN s.pointId AS pointId
-            ORDER BY s.pointId
+            RETURN s.symbolId AS symbolId, s.emoji AS emoji
+            ORDER BY s.symbolId
             """,
             card_id=card_id,
         )
-        return [{"pointId": r["pointId"], "name": name_for_point_id(r["pointId"])} for r in result]
+        return [
+            {
+                "symbolId": r["symbolId"],
+                "name": name_for_symbol_id(r["symbolId"]),
+                "emoji": r.get("emoji") or emoji_for_symbol_id(r["symbolId"]),
+            }
+            for r in result
+        ]
 
 
 # Exact Cypher used for shared-symbol lookup (for debug output).
@@ -98,16 +105,16 @@ MATCH
   (s:Point:Symbol)
       -[:ON]->
   (:Card {cardId: b})
-RETURN s.name AS name, s.pointId AS pointId;
+RETURN s.name AS name, s.symbolId AS symbolId, s.emoji AS emoji;
 """
 
 
 def get_shared_symbol(card_id_a: int, card_id_b: int) -> Optional[dict]:
     """
     Return the single symbol shared by the two cards, or None if invalid.
-    Name is always the emoji name from symbols.
+    Returns { symbolId, name, emoji }; name/emoji from Symbol node when present, else from symbols.
     """
-    from symbols import name_for_point_id
+    from symbols import name_for_symbol_id, emoji_for_symbol_id
 
     driver = get_driver()
     if not driver:
@@ -122,29 +129,34 @@ def get_shared_symbol(card_id_a: int, card_id_b: int) -> Optional[dict]:
         row = result.single()
         if not row:
             return None
-        pid = row.get("pointId")
-        if pid is None:
-            pid = row.get("s.pointId")
+        sid = row.get("symbolId")
+        if sid is None:
+            sid = row.get("s.symbolId")
         name = row.get("name")
         if name is None:
             name = row.get("s.name")
-        if name is None and pid is not None:
-            name = name_for_point_id(pid)
-        return {"pointId": pid, "name": name}
+        if name is None and sid is not None:
+            name = name_for_symbol_id(sid)
+        emoji = row.get("emoji")
+        if emoji is None:
+            emoji = row.get("s.emoji")
+        if emoji is None and sid is not None:
+            emoji = emoji_for_symbol_id(sid)
+        return {"symbolId": sid, "name": name, "emoji": emoji}
 
 
 def _fallback_symbols_on_card(card_id: int) -> list[dict]:
     """
     Fallback when Neo4j is not available: use projective plane math
-    (order 7) and emoji names from symbols. Returns pointId 1..57.
+    (order 7) and emoji/names from symbols. Returns { symbolId, name, emoji }.
     """
-    from symbols import name_for_point_id
+    from symbols import name_for_symbol_id, emoji_for_symbol_id
 
     if not 0 <= card_id <= 56:
         return []
     # Affine lines: cid 0..48 -> y = m*x + b, 7 affine points + slope point
     # Vertical: 49..55 -> x = c, 7 affine + vertical inf
-    # Infinity line: 56 -> all 8 infinity points (indices 49..56 -> pointId 50..57)
+    # Infinity line: 56 -> all 8 infinity points (symbolId 49..56)
     indices: list[int] = []
     if card_id < 49:
         m, b = card_id // 7, card_id % 7
@@ -159,17 +171,20 @@ def _fallback_symbols_on_card(card_id: int) -> list[dict]:
         indices.append(56)  # vertical infinity
     else:
         indices = list(range(49, 57))
-    return [{"pointId": i + 1, "name": name_for_point_id(i + 1)} for i in indices]
+    return [
+        {"symbolId": i, "name": name_for_symbol_id(i), "emoji": emoji_for_symbol_id(i)}
+        for i in indices
+    ]
 
 
 def _fallback_shared_symbol(card_id_a: int, card_id_b: int) -> Optional[dict]:
-    """Compute shared symbol using same projective plane logic when DB unavailable. Returns pointId 1..57."""
-    from symbols import name_for_point_id
+    """Compute shared symbol using same projective plane logic when DB unavailable. Returns { symbolId, name, emoji }."""
+    from symbols import name_for_symbol_id, emoji_for_symbol_id
 
-    sa = {p["pointId"] for p in _fallback_symbols_on_card(card_id_a)}
-    sb = {p["pointId"] for p in _fallback_symbols_on_card(card_id_b)}
+    sa = {p["symbolId"] for p in _fallback_symbols_on_card(card_id_a)}
+    sb = {p["symbolId"] for p in _fallback_symbols_on_card(card_id_b)}
     shared_ids = sa & sb
     if len(shared_ids) != 1:
         return None
-    pid = shared_ids.pop()
-    return {"pointId": pid, "name": name_for_point_id(pid)}
+    sid = shared_ids.pop()
+    return {"symbolId": sid, "name": name_for_symbol_id(sid), "emoji": emoji_for_symbol_id(sid)}

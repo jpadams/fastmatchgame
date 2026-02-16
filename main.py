@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 
 from game_logic import Round, new_round, symbols_for_round
 from ai_player import ai_guess_shared_symbol, judge_answer
-from symbols import emoji_for_name, emoji_for_point_id
+from symbols import emoji_for_name, emoji_for_symbol_id
 
 # Optional image generation for cards
 try:
@@ -124,9 +124,9 @@ def _layout_for_card(symbols: list[dict]) -> list[dict]:
         x, y = _pick_position_away_from(existing)
         existing.append((x, y))
         out.append({
-            "pointId": s["pointId"],
+            "symbolId": s["symbolId"],
             "name": s["name"],
-            "emoji": emoji_for_point_id(s["pointId"]),
+            "emoji": emoji_for_symbol_id(s["symbolId"]),
             "x": x,
             "y": y,
             "rotation": random.uniform(-40, 40),
@@ -175,13 +175,13 @@ def get_round(round_id: str) -> dict[str, Any]:
 
 @app.post("/api/round/{round_id}/validate")
 def validate_answer(round_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """Validate human's answer. Body: { "pointId": int? } or { "name": str }. Returns correct + expected."""
+    """Validate human's answer. Body: { "symbolId": int? } or { "name": str }. Returns correct + expected."""
     if round_id not in _rounds:
         raise HTTPException(status_code=404, detail="Round not found")
     r, _ = _rounds[round_id]
-    point_id = body.get("pointId")
+    symbol_id = body.get("symbolId")
     name = body.get("name")
-    result = judge_answer(name, point_id, r, "human")
+    result = judge_answer(name, symbol_id, r, "human")
     debug = None
     from graph import get_driver, CYPHER_SHARED_SYMBOL
     if get_driver():
@@ -212,7 +212,7 @@ async def ai_play(round_id: str) -> dict[str, Any]:
         guess = await asyncio.to_thread(ai_guess_shared_symbol, ai_b64, target_b64, ai_card_symbol_names)
         if guess.get("error"):
             return {"error": guess["error"], "correct": None, "expected": None, "usage": None, "debug": guess.get("debug")}
-        verdict = judge_answer(guess.get("name"), guess.get("pointId"), r, "ai")
+        verdict = judge_answer(guess.get("name"), guess.get("symbolId"), r, "ai")
         name = guess.get("name")
         emoji = emoji_for_name(name) if name else None
         expected = verdict.get("expected")

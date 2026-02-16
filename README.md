@@ -52,7 +52,7 @@ Open http://localhost:8000 and click **New round**.
 
 - `POST /api/round` — Create a new round; returns `roundId`, `layout` (target/ai/human), `allSymbolNames`.
 - `GET /api/round/{roundId}` — Get layout for a round (no answers).
-- `POST /api/round/{roundId}/validate` — Body: `{ "name": "Symbol name" }` or `{ "pointId": 1 }` (pointId 1..57). Returns `{ "correct": bool, "expected": { "pointId", "name" } }`.
+- `POST /api/round/{roundId}/validate` — Body: `{ "name": "Symbol name" }` or `{ "symbolId": 0 }` (symbolId 0..56). Returns `{ "correct": bool, "expected": { "symbolId", "name" } }`.
 - `POST /api/round/{roundId}/ai-play` — Run the AI player (vision model) and return its answer plus judge result.
 - `GET /api/health` — Neo4j and render availability.
 

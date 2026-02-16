@@ -11,7 +11,7 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 from graph import get_symbols_on_card
-from symbols import emoji_for_point_id
+from symbols import emoji_for_symbol_id
 
 # Card dimensions for export
 CARD_W = 400
@@ -79,13 +79,13 @@ def _layout_symbols(symbols: list[dict], seed: Optional[int] = None) -> list[dic
     out = []
     existing: list[tuple[float, float]] = []
     for i, s in enumerate(symbols):
-        pid = s["pointId"]
+        sid = s["symbolId"]
         x, y = _pick_position_away_from(rng, existing)
         existing.append((x, y))
         out.append({
-            "pointId": pid,
+            "symbolId": sid,
             "name": s["name"],
-            "emoji": emoji_for_point_id(pid),
+            "emoji": emoji_for_symbol_id(sid),
             "x": x,
             "y": y,
             "rotation": rng.uniform(-40, 40),

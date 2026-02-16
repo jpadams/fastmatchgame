@@ -27,23 +27,23 @@ class Round:
         """Symbol shared by AI's card and target (ground truth)."""
         return get_shared_symbol(self.ai_card_id, self.target_card_id)
 
-    def validate_human_answer(self, point_id: int | None, name: str | None) -> bool:
-        """Check human's answer against graph. Accept pointId or name."""
+    def validate_human_answer(self, symbol_id: int | None, name: str | None) -> bool:
+        """Check human's answer against graph. Accept symbolId or name."""
         truth = self.human_target_shared()
         if not truth:
             return False
-        if point_id is not None and truth["pointId"] == point_id:
+        if symbol_id is not None and truth["symbolId"] == symbol_id:
             return True
         if name is not None and truth["name"].strip().lower() == name.strip().lower():
             return True
         return False
 
-    def validate_ai_answer(self, point_id: int | None, name: str | None) -> bool:
+    def validate_ai_answer(self, symbol_id: int | None, name: str | None) -> bool:
         """Check AI's answer against graph."""
         truth = self.ai_target_shared()
         if not truth:
             return False
-        if point_id is not None and truth["pointId"] == point_id:
+        if symbol_id is not None and truth["symbolId"] == symbol_id:
             return True
         if name is not None and truth["name"].strip().lower() == name.strip().lower():
             return True
@@ -63,7 +63,7 @@ def new_round() -> Round:
 def symbols_for_round(round_obj: Round) -> dict[str, list[dict]]:
     """
     Return symbols on each card for rendering.
-    Keys: "target", "ai", "human"; values: list of { pointId, name }.
+    Keys: "target", "ai", "human"; values: list of { symbolId, name }.
     """
     return {
         "target": get_symbols_on_card(round_obj.target_card_id),

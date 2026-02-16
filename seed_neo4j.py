@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from symbols import EMOJI_NAMES
+from symbols import EMOJI_NAMES, POINT_ID_TO_EMOJI
 
 if TYPE_CHECKING:
     from neo4j import Driver
@@ -30,26 +30,28 @@ def ensure_deck_loaded(driver: "Driver") -> str:
 
 
 def _seed_points(driver: "Driver") -> None:
-    """Create 57 Point/Symbol nodes (pointId 1..57)."""
+    """Create 57 Point/Symbol nodes (symbolId 0..56) with name and emoji."""
     with driver.session() as session:
-        for pid in range(1, 58):
-            name = EMOJI_NAMES[pid - 1]
-            kind = "affine" if pid < 50 else "infinity"
-            x = (pid - 1) // 7 if pid < 50 else None
-            y = (pid - 1) % 7 if pid < 50 else None
-            if pid == 57:
+        for sid in range(0, 57):
+            name = EMOJI_NAMES[sid]
+            emoji = POINT_ID_TO_EMOJI[sid]
+            kind = "affine" if sid < 49 else "infinity"
+            x = sid // 7 if sid < 49 else None
+            y = sid % 7 if sid < 49 else None
+            if sid == 56:
                 slope = "vertical"
-            elif 50 <= pid <= 56:
-                slope = pid - 50
+            elif 49 <= sid <= 55:
+                slope = sid - 49
             else:
                 slope = None
             session.run(
                 """
-                MERGE (p:Point:Symbol {pointId: $pid})
-                SET p.name = $name, p.kind = $kind, p.x = $x, p.y = $y, p.slope = $slope
+                MERGE (p:Point:Symbol {symbolId: $sid})
+                SET p.name = $name, p.emoji = $emoji, p.kind = $kind, p.x = $x, p.y = $y, p.slope = $slope
                 """,
-                pid=pid,
+                sid=sid,
                 name=name,
+                emoji=emoji,
                 kind=kind,
                 x=x,
                 y=y,
