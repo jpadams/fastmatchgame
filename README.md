@@ -65,3 +65,4 @@ Open http://localhost:8000 and click **New round**.
 - `ai_player.py` — Vision API call (OpenAI) and judge (graph-based validation).
 - `main.py` — FastAPI app: round creation, layout, validate, ai-play, static frontend.
 - `static/index.html` — Game UI: cards, timer, answer dropdown, submit, AI play.
+- `dobble.sh` - If you have a Neo4j graph db with the Dobble graph in it, and have your credentials in the `.env` file or as env vars, then you can run this script to play in the CLI! Pre-reqs, must have `cypher-shell`.
