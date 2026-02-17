@@ -60,6 +60,21 @@ play_turn () {
   cardA=$(echo "$OUTPUT" | head -n1 | awk -F',' '{print $1}' | xargs)
   cardB=$(echo "$OUTPUT" | tail -n1 | awk -F',' '{print $1}' | xargs)
 
+  # Get answer
+  answer=$(cypher-shell \
+    -a "$NEO4J_URI" \
+    -u "$NEO4J_USER" \
+    -p "$NEO4J_PASSWORD" \
+    --format plain --wrap false "
+    MATCH
+    (c1:Card {cardId: $cardA})
+      <-[:ON]-
+    (s:Symbol)
+      -[:ON]->
+    (c2:Card {cardId: $cardB})
+    RETURN s.emoji AS shared_symbol;
+    " | sed '1d' | tr -d '[:space:]"')
+
   # Extract emoji lists
   rawA=$(echo "$OUTPUT" | head -n1 | sed 's/^[^[]*\[//' | sed 's/\].*//')
   rawB=$(echo "$OUTPUT" | tail -n1 | sed 's/^[^[]*\[//' | sed 's/\].*//')
@@ -127,23 +142,10 @@ play_turn () {
   CHOICE=${TARGET_SYMBOLS[$((INDEX-1))]}
 
   # ---------------------------
-  # Validate via Neo4j
+  # Validate answer
   # ---------------------------
-  result=$(cypher-shell \
-    -a "$NEO4J_URI" \
-    -u "$NEO4J_USER" \
-    -p "$NEO4J_PASSWORD" \
-    --format plain --wrap false "
-    MATCH (c1:Card {cardId: $cardA})
-    MATCH (c2:Card {cardId: $cardB})
-    MATCH (s:Symbol {emoji: '$CHOICE'})
-    WHERE (s)-[:ON]->(c1) AND (s)-[:ON]->(c2)
-    RETURN count(s) AS correct;
-  " | sed '1d' | tr -d '[:space:]')
-
   echo "" >&2
-
-  if [ "$result" = "1" ]; then
+  if [ $CHOICE = $answer ]; then
     echo "Correct! ${elapsed}ms" >&2
   else
     echo "Wrong! ${elapsed}ms (penalty 3000ms)" >&2
